@@ -12,6 +12,7 @@ public class Counsellor {
 	@DocumentId
     private String userName;
 	
+	private String role;
     private String firstName;   
     private String lastName;   
     private String phoneNumber; 
@@ -25,14 +26,13 @@ public class Counsellor {
     private String password;
     private String organisationName;
     private String experience;
-    private String role;
     private List<ActivityLog> activityLog;
     private List<CallHistory> callHistory;
     private List<String> stateOfCounsellor;
     private List<Map<String,String>> chatIdsCreatedForCounsellor;
     private Double ratePerYear;
     private Double ratePerMinute;
-    private List<String> expertise; //align with user's interested course
+    private List<String> expertise;
     private Integer noOfClients;
     private Integer noOfFollowers;
     private List<String> clientIds;

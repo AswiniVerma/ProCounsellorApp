@@ -3,6 +3,7 @@ package com.catalyst.ProCounsellor.service;
 
 import com.catalyst.ProCounsellor.exception.UserNotFoundException;
 import com.catalyst.ProCounsellor.model.ActivityLog;
+import com.catalyst.ProCounsellor.model.AppointmentBooking;
 import com.catalyst.ProCounsellor.model.Counsellor;
 import com.catalyst.ProCounsellor.model.Course;
 import com.catalyst.ProCounsellor.model.States;
@@ -32,6 +33,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import com.catalyst.ProCounsellor.config.JwtKeyProvider;
+import com.catalyst.ProCounsellor.dto.AppointmentBookingRequest;
 import com.catalyst.ProCounsellor.dto.CounsellorDataInUserDashboard;
 import com.catalyst.ProCounsellor.service.UserService;
 import com.google.firebase.auth.FirebaseAuth;
@@ -51,6 +53,9 @@ public class UserService {
 	
 	@Autowired
     private OTPService otpService;
+	
+	@Autowired
+    private AppointmentBookingService appointmentBookingService;
 	
 	private final Firestore firestore;
 
@@ -214,6 +219,18 @@ public class UserService {
 	        logger.error("Failed to update user [{}]: {}", userId, e.getMessage(), e);
 	        throw e;
 	    }
+	}
+	
+	public String bookAppointment(AppointmentBookingRequest appointmentBookingRequest) throws Exception {
+		return appointmentBookingService.bookAppointment(appointmentBookingRequest);
+	}
+	
+	public List<AppointmentBooking> getAppointmentsByUserId(String userId) throws Exception {
+		return appointmentBookingService.getAppointmentsByUserId(userId);
+	}
+	
+	public List<AppointmentBooking> getUpcomingAppointmentsByUserId(String userId) throws Exception {
+		return appointmentBookingService.getUpcomingAppointmentsByUserId(userId);
 	}
 	
 	public List<CounsellorDataInUserDashboard> getCounsellorsByCourse(String course) {

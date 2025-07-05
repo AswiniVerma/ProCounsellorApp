@@ -1,9 +1,11 @@
 package com.catalyst.ProCounsellor.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import com.catalyst.ProCounsellor.dto.AppointmentBookingRequest;
 import com.catalyst.ProCounsellor.model.AppointmentBooking;
 import com.catalyst.ProCounsellor.model.Counsellor;
+import com.catalyst.ProCounsellor.model.User;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.DocumentReference;
@@ -37,6 +40,17 @@ public class AppointmentBookingService {
 
 	public String bookAppointment(AppointmentBookingRequest request) throws Exception {
 	    logger.info("Attempting to book appointment: {}", request);
+	    
+	    // ✅ Check: Appointment date & time must be in the future
+	    LocalDate appointmentDate = LocalDate.parse(request.getDate());
+	    LocalTime appointmentStartTime = LocalTime.parse(request.getStartTime(), timeFormatter);
+	    LocalDateTime appointmentDateTime = LocalDateTime.of(appointmentDate, appointmentStartTime);
+	    LocalDateTime now = LocalDateTime.now();
+
+	    if (appointmentDateTime.isBefore(now)) {
+	        logger.warn("Attempted to book appointment in the past: {} {}", request.getDate(), request.getStartTime());
+	        throw new RuntimeException("Cannot book an appointment in the past");
+	    }
 	
 	    // Fetch counsellor details
 	    logger.debug("Fetching counsellor details for ID: {}", request.getCounsellorId());
@@ -129,7 +143,6 @@ public class AppointmentBookingService {
 	    return appointment.getAppointmentId();
 	}
 
-
 	public List<AppointmentBooking> getAppointmentsByCounsellorId(String counsellorId) throws Exception {
         logger.info("Fetching appointments for counsellor ID: {}", counsellorId);
 
@@ -162,4 +175,93 @@ public class AppointmentBookingService {
 	        return null;
 	    }
 	}
+	
+	public List<AppointmentBooking> getAppointmentsByUserId(String userId) throws Exception {
+        logger.info("Fetching user document for userId: {}", userId);
+
+        DocumentReference userRef = firestore.collection("users").document(userId);
+        ApiFuture<DocumentSnapshot> userFuture = userRef.get();
+        DocumentSnapshot userSnapshot = userFuture.get();
+
+        if (!userSnapshot.exists()) {
+            logger.warn("User not found for userId: {}", userId);
+            return Collections.emptyList();
+        }
+
+        User user = userSnapshot.toObject(User.class);
+        List<String> appointmentIds = user.getAppointmentIds();
+
+        if (appointmentIds == null || appointmentIds.isEmpty()) {
+            logger.info("No appointment IDs found for userId: {}", userId);
+            return Collections.emptyList();
+        }
+
+        logger.info("Found {} appointment IDs for userId: {}", appointmentIds.size(), userId);
+
+        List<AppointmentBooking> appointments = new ArrayList<>();
+        for (String appointmentId : appointmentIds) {
+            logger.debug("Fetching appointment with ID: {}", appointmentId);
+            DocumentSnapshot doc = firestore.collection("appointments").document(appointmentId).get().get();
+            if (doc.exists()) {
+                appointments.add(doc.toObject(AppointmentBooking.class));
+            } else {
+                logger.warn("Appointment not found for ID: {}", appointmentId);
+            }
+        }
+
+        logger.info("Returning {} appointments for userId: {}", appointments.size(), userId);
+        return appointments;
+    }
+	
+	public List<AppointmentBooking> getUpcomingAppointmentsByUserId(String userId) throws Exception {
+        logger.info("Fetching upcoming appointments for userId: {}", userId);
+
+        // Step 1: Fetch user document
+        DocumentSnapshot userSnapshot = firestore.collection("users").document(userId).get().get();
+        if (!userSnapshot.exists()) {
+            logger.warn("User not found for userId: {}", userId);
+            return Collections.emptyList();
+        }
+
+        User user = userSnapshot.toObject(User.class);
+        List<String> appointmentIds = user.getAppointmentIds();
+
+        if (appointmentIds == null || appointmentIds.isEmpty()) {
+            logger.info("No appointment IDs found for userId: {}", userId);
+            return Collections.emptyList();
+        }
+
+        logger.info("Found {} appointments for userId: {}", appointmentIds.size(), userId);
+
+        List<AppointmentBooking> upcomingAppointments = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (String appointmentId : appointmentIds) {
+            DocumentSnapshot doc = firestore.collection("appointments").document(appointmentId).get().get();
+            if (!doc.exists()) {
+                logger.warn("Appointment not found: {}", appointmentId);
+                continue;
+            }
+
+            AppointmentBooking appointment = doc.toObject(AppointmentBooking.class);
+
+            try {
+                String dateStr = appointment.getDate();         // yyyy-MM-dd
+                String startTimeStr = appointment.getStartTime(); // HH:mm
+
+                LocalDateTime appointmentStart = LocalDateTime.parse(dateStr + "T" + startTimeStr);
+                if (appointmentStart.isAfter(now)) {
+                    logger.debug("Appointment {} is upcoming", appointmentId);
+                    upcomingAppointments.add(appointment);
+                } else {
+                    logger.debug("Appointment {} has already started or ended", appointmentId);
+                }
+            } catch (Exception e) {
+                logger.error("Failed to parse appointment date/time for ID: {}", appointmentId, e);
+            }
+        }
+
+        logger.info("Returning {} upcoming appointments for userId: {}", upcomingAppointments.size(), userId);
+        return upcomingAppointments;
+    }
 }

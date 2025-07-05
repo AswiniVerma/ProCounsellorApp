@@ -230,7 +230,6 @@ public class CounsellorService {
 	    );
 	}
 
-    // Signin functionality
 	public HttpStatus counsellorSignin(String identifier, String password) throws ExecutionException, InterruptedException {
 	    logger.info("Attempting counsellor signin for identifier: {}", identifier);
 
@@ -279,6 +278,35 @@ public class CounsellorService {
 	    } else {
 	        logger.warn("No counsellor found for identifier: {}", identifier);
 	        throw new UserNotFoundException("Counsellor not found for the provided credentials.");
+	    }
+	}
+	
+	public boolean resetPassword(String email, String newPassword) {
+	    logger.info("Initiating password reset for email: {}", email);
+
+	    try {
+	        logger.debug("Querying counsellor document with email: {}", email);
+	        ApiFuture<QuerySnapshot> query = firestore.collection(COUNSELLORS)
+	                .whereEqualTo("email", email)
+	                .get();
+
+	        List<QueryDocumentSnapshot> documents = query.get().getDocuments();
+
+	        if (documents.isEmpty()) {
+	            logger.warn("No counsellor found with email: {}", email);
+	            return false;
+	        }
+
+	        DocumentReference userDoc = documents.get(0).getReference();
+	        logger.debug("Counsellor found. Updating password for document: {}", userDoc.getId());
+
+	        userDoc.update("password", newPassword);
+	        logger.info("Password successfully reset for email: {}", email);
+
+	        return true;
+	    } catch (Exception e) {
+	        logger.error("Failed to reset password for email: {}", email, e);
+	        return false;
 	    }
 	}
 	
