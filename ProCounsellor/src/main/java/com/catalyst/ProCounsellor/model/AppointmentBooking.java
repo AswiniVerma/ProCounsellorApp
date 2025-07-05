@@ -17,7 +17,7 @@ public class AppointmentBooking {
     private String startTime; // Format: HH:mm
     private String endTime;   // Format: HH:mm
 
-    private String mode; // e.g., "call", "video", "chat"
+    private String mode; // e.g., "call", "video", "offline"
     private String status; // "booked", "cancelled", "reschedule,"completed","user didnt come"
     
     private String notes; // Optional note from user

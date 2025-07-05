@@ -122,6 +122,16 @@ public class AuthController {
         }
     }
     
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestParam String email, @RequestParam String newPassword) {
+        boolean success = counsellorService.resetPassword(email, newPassword);
+        if (success) {
+            return ResponseEntity.ok("Password reset successfully 🔐");
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Email not found ❌");
+        }
+    }
+    
     @PostMapping("/counsellorSignup")
     public ResponseEntity<Map<String, Object>> counsellorSignup(@RequestBody Counsellor counsellor) throws ExecutionException, InterruptedException {
         try {

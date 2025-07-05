@@ -27,7 +27,6 @@ import com.catalyst.ProCounsellor.exception.UserNotFoundException;
 import com.catalyst.ProCounsellor.model.AppointmentBooking;
 import com.catalyst.ProCounsellor.model.Counsellor;
 import com.catalyst.ProCounsellor.model.User;
-import com.catalyst.ProCounsellor.service.AppointmentBookingService;
 import com.catalyst.ProCounsellor.service.CounsellorService;
 import com.catalyst.ProCounsellor.service.PhotoService;
 import com.catalyst.ProCounsellor.service.UserService;
@@ -53,8 +52,6 @@ public class UserController {
 	@Autowired
 	private PhotoService photoService;
 	
-	@Autowired
-    private AppointmentBookingService appointmentBookingService;
 	
 	@PatchMapping("/{userId}")
 	public ResponseEntity<?> updateUserFields(
@@ -123,11 +120,34 @@ public class UserController {
 	        if (!user.getUserName().equals(appointmentBookingRequest.getUserId())) {
 	            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized access");
 	        }
-            String appointmentId = appointmentBookingService.bookAppointment(appointmentBookingRequest);
+            String appointmentId = userService.bookAppointment(appointmentBookingRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", "Appointment booked successfully", "appointmentId", appointmentId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+    
+    @GetMapping("/getUserAllAppointments")
+    public ResponseEntity<?> getAppointmentsByUserId(@RequestParam String userId, HttpServletRequest request) throws Exception {
+    	User user = JwtUtil.getAuthenticatedUser(request);
+
+        if (!user.getUserName().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized access");
+        }
+        List<AppointmentBooking> appointments = userService.getAppointmentsByUserId(userId);
+        return ResponseEntity.ok(appointments);
+    }
+    
+    @GetMapping("/getUpcomingAppointments")
+    public ResponseEntity<?> getUpcomingAppointments(@RequestParam String userId, HttpServletRequest request) throws Exception {
+    	User user = JwtUtil.getAuthenticatedUser(request);
+
+        if (!user.getUserName().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized access");
+        }
+        
+        List<AppointmentBooking> upcomingAppointments = userService.getUpcomingAppointmentsByUserId(userId);
+        return ResponseEntity.ok(upcomingAppointments);
     }
     
 	@GetMapping("/selectedCounsellorAppointments")
